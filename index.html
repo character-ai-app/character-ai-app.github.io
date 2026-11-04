@@ -262,13 +262,13 @@
   @media (prefers-reduced-motion:reduce){.ububble{animation:none}}
   .typing{display:none;gap:5px;padding:8px 2px;align-items:center}
   .typing.show{display:flex}
-  .typing i{width:7px;height:7px;border-radius:50%;background:#8e8e96;animation:blink 1.1s infinite}
+  .typing i{width:7px;height:7px;border-radius:50%;background:#8e8e96;animation:typingPulse 1.1s ease-in-out infinite;will-change:transform,opacity}
   .typing i:nth-child(2){animation-delay:.18s}.typing i:nth-child(3){animation-delay:.36s}
-  @keyframes blink{0%,60%,100%{opacity:.35}30%{opacity:1}}
+  @keyframes typingPulse{0%,60%,100%{opacity:.35;transform:scale(.78)}30%{opacity:1;transform:scale(1.18)}}
   @media (prefers-reduced-motion:reduce){.typing i{animation:none}}
   .composer{padding:8px 12px calc(10px + env(safe-area-inset-bottom));flex-shrink:0;background:var(--app)}
-  .composer-box{background:var(--card2);border-radius:999px;display:flex;align-items:flex-end;padding:5px 6px 5px 8px;min-height:50px;border:1px solid #2c2c33}
-  .composer-box textarea{flex:1;background:transparent;border:none;outline:none;resize:none;color:var(--text);font-size:16px;line-height:1.45;max-height:96px;padding:10px 4px;font-family:Roboto,sans-serif;min-width:0}
+  .composer-box{background:var(--card2);border-radius:26px;box-shadow:0 4px 18px rgba(0,0,0,.38);display:flex;align-items:flex-end;padding:5px 6px 5px 8px;min-height:50px;border:1px solid #2c2c33}
+  .composer-box textarea{flex:1;background:transparent;border:none;outline:none;resize:none;color:var(--text);font-size:16px;line-height:1.45;max-height:136px;overflow-y:auto;padding:10px 4px;font-family:Roboto,sans-serif;min-width:0}
   .composer-box textarea::placeholder{color:#71717a}
   .cbtn{border:none;background:transparent;color:#c9c9cf;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;flex-shrink:0}
   .cbtn svg{width:21px;height:21px}
@@ -560,7 +560,7 @@
           <div class="intro-tag">Chat &middot; Create &middot; Connect</div>
           <div class="intro-loadwrap"><div class="intro-bar"><i></i></div><div class="intro-pct" id="introPct">0%</div></div>
         </div>
-        <div class="intro-ver">VERSION 1.2</div>
+        <div class="intro-ver">VERSION 1.3</div>
       </div>
     </div>
 
@@ -713,7 +713,7 @@
           <div class="section-head" id="adultTrendingHead"><h3>Trending in After Dark</h3><span class="badge18">18+</span></div>
           <button class="wide" id="adultTrendingWide" onclick="openVerify()" aria-label="Trending 18+ character"></button>
 
-          <div class="proto-note">Character AI · Version 1.2</div>
+          <div class="proto-note">Character AI · Version 1.3</div>
         </div>
       </section>
 
@@ -920,7 +920,7 @@
             <span class="li-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 7l-1.4 1.4L18.2 11H8v2h10.2l-2.6 2.6L17 17l5-5zM4 5h8V3H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8v-2H4z"/></svg></span>
             <div id="logoutLabel">Log Out<small>Back to the login screen to test it again</small></div><span class="chev">›</span>
           </button>
-          <div class="proto-note" style="padding-top:22px">Character AI · Version 1.2<br>Chat · Create · Explore</div>
+          <div class="proto-note" style="padding-top:22px">Character AI · Version 1.3<br>Chat · Create · Explore</div>
         </div>
       </section>
     </div>
@@ -2048,7 +2048,7 @@ function appendUserMsg(text){
    leaving mid-reveal loses nothing and duplicates nothing. Listen/Copy
    read the full text via caiRowFullText(). */
 var caiRevealTimer = null;
-function caiStopReveal(){ if(caiRevealTimer){ clearInterval(caiRevealTimer); caiRevealTimer = null; } }
+function caiStopReveal(){ if(caiRevealTimer){ cancelAnimationFrame(caiRevealTimer); caiRevealTimer = null; } }
 function caiRowFullText(btn){
   var row = btn && btn.closest ? btn.closest('.mrow') : null;
   return row && row._fullText ? row._fullText : null;
@@ -2062,6 +2062,47 @@ function caiPartialDisplay(s){
   if(((s.match(/\*\*/g) || []).length % 2) === 1) s += '**';
   return s;
 }
+/* --- Adaptive reveal pacing (v1.3) ---
+   The reveal is driven by requestAnimationFrame, so steps land on the
+   display's own refresh: 90/120Hz panels get fine steps, 60Hz panels
+   get matched steps, and nothing is tied to a fixed 30ms timer.
+   Recent frame durations are tracked with an exponential moving
+   average and converted into a word-chunk size (caiRevealChunk):
+   fast frames reveal 1 word per step; slow frames (low-end devices)
+   reveal several words per step, each step costing proportionally
+   more of the time budget, so the TOTAL reveal time stays in the
+   same ~1.5-3s band for a typical 40-90 word reply on any device
+   while slow hardware does far fewer DOM updates. Per frame the
+   loop only writes innerHTML when the shown count actually changed
+   (at most once per frame) and only scrolls when the user is
+   already near the bottom (tracked by a passive scroll listener,
+   caiStickBottom -- no layout reads inside the frame loop). */
+function caiRevealChunk(avgMs){
+  if(!(avgMs > 0)) return 1;
+  if(avgMs <= 22) return 1;
+  if(avgMs <= 40) return 2;
+  if(avgMs <= 55) return 3;
+  return 4;
+}
+function caiRevealPacer(totalWords, duration, startShown){
+  return {
+    shown: startShown || 0, acc: 0, ema: 16.7,
+    advance: function(dt){
+      if(dt > 0 && dt < 1000) this.ema = this.ema * 0.75 + dt * 0.25;
+      if(dt > 0) this.acc += dt;
+      var step = caiRevealChunk(this.ema);
+      var stepMs = (duration / totalWords) * step;
+      var steps = Math.floor(this.acc / stepMs);
+      if(steps <= 0) return 0;
+      this.acc -= steps * stepMs;
+      var next = Math.min(totalWords, this.shown + steps * step);
+      var adv = next - this.shown;
+      this.shown = next;
+      return adv;
+    }
+  };
+}
+var caiStickBottom = true;
 function appendCharMsg(text, animate){
   var c = getChar(currentChar);
   var box = $('messages');
@@ -2072,6 +2113,13 @@ function appendCharMsg(text, animate){
   row._fullText = text;
   box.insertBefore(row, $('typingRow'));
   box.scrollTop = box.scrollHeight;
+  caiStickBottom = true;
+  if(!box._caiStickHook){
+    box._caiStickHook = true;
+    box.addEventListener('scroll', function(){
+      caiStickBottom = (box.scrollHeight - box.scrollTop - box.clientHeight) < 160;
+    }, { passive: true });
+  }
   if(!animate) return;
   var mt = row.querySelector('.mtext');
   if(!mt) return;
@@ -2082,26 +2130,35 @@ function appendCharMsg(text, animate){
   if(!chunks || chunks.length < 2) return;
   caiStopReveal();
   var totalWords = chunks.length;
-  /* ~30ms per word, clamped so a typical 40-90 word reply finishes
-     revealing in roughly 1.5-3 seconds. */
+  /* Same total-time band as before: ~30ms of reveal time per word,
+     clamped so a typical 40-90 word reply finishes in roughly
+     1.5-3 seconds -- the pacing above just distributes that time
+     across whatever frames the device actually delivers. */
   var duration = Math.min(3000, Math.max(1500, totalWords * 30));
-  var ticks = Math.max(1, Math.round(duration / 30));
-  var perTick = Math.max(1, Math.ceil(totalWords / ticks));
-  var shown = Math.min(totalWords, perTick);
+  var shown = 1;
   mt.innerHTML = formatRP(caiPartialDisplay(chunks.slice(0, shown).join('')), c.name);
-  box.scrollTop = box.scrollHeight;
-  caiRevealTimer = setInterval(function(){
-    if(!row.isConnected){ caiStopReveal(); return; }
-    shown = Math.min(totalWords, shown + perTick);
-    var nearBottom = (box.scrollHeight - box.scrollTop - box.clientHeight) < 160;
-    mt.innerHTML = formatRP(caiPartialDisplay(chunks.slice(0, shown).join('')), c.name);
-    if(nearBottom) box.scrollTop = box.scrollHeight;
-    if(shown >= totalWords){
-      caiStopReveal();
-      mt.innerHTML = formatRP(text, c.name);
-      if(nearBottom) box.scrollTop = box.scrollHeight;
+  if(caiStickBottom) box.scrollTop = box.scrollHeight;
+  var pacer = caiRevealPacer(totalWords, duration, shown);
+  var lastTs = null;
+  var frame = function(ts){
+    caiRevealTimer = null;
+    if(!row.isConnected) return;
+    if(lastTs === null){ lastTs = ts; caiRevealTimer = requestAnimationFrame(frame); return; }
+    var adv = pacer.advance(ts - lastTs);
+    lastTs = ts;
+    if(adv > 0){
+      shown = pacer.shown;
+      mt.innerHTML = formatRP(caiPartialDisplay(chunks.slice(0, shown).join('')), c.name);
+      if(caiStickBottom) box.scrollTop = box.scrollHeight;
+      if(shown >= totalWords){
+        mt.innerHTML = formatRP(text, c.name);
+        if(caiStickBottom) box.scrollTop = box.scrollHeight;
+        return;
+      }
     }
-  }, 30);
+    caiRevealTimer = requestAnimationFrame(frame);
+  };
+  caiRevealTimer = requestAnimationFrame(frame);
 }
 function openChat(id){
   closeChatMenu();
@@ -2136,11 +2193,23 @@ function syncSend(){
   $('sendBtn').classList.toggle('show', has);
   $('micBtn').style.display = has ? 'none' : 'grid';
 }
-ta.addEventListener('input', function(){
+/* Auto-growing composer (v1.3): typed text wraps and the box
+   grows line by line up to ~5 lines (136px = 5 x 23.2px lines +
+   vertical padding at 16px/1.45), then scrolls internally. The
+   composer-box keeps buttons bottom-aligned (flex-end) and the
+   message list above is flex-1, so it shrinks as the box grows. */
+var CAI_COMPOSER_MAX_H = 136;
+function caiAutoGrowComposer(){
   ta.style.height = 'auto';
-  ta.style.height = Math.min(ta.scrollHeight, 96) + 'px';
+  var full = ta.scrollHeight;
+  ta.style.height = Math.min(full, CAI_COMPOSER_MAX_H) + 'px';
+  ta.style.overflowY = full > CAI_COMPOSER_MAX_H ? 'auto' : 'hidden';
+}
+ta.addEventListener('input', function(){
+  caiAutoGrowComposer();
   syncSend();
 });
+window.addEventListener('resize', caiAutoGrowComposer);
 ta.addEventListener('keydown', function(e){
   if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); }
 });
@@ -2178,7 +2247,7 @@ function sendMessage(){
   var charId = currentChar;
   var c = getChar(charId);
   var messages = buildChatMessages(c, text);
-  ta.value=''; ta.style.height='auto'; syncSend();
+  ta.value=''; caiAutoGrowComposer(); syncSend();
   appendUserMsg(text);
   touchChat(charId);
   if(!CONVERSATIONS[charId]) CONVERSATIONS[charId] = [];
