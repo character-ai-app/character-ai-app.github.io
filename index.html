@@ -113,6 +113,20 @@
   /* ===== 18+ section ===== */
   .cat-adult{border:1px solid #7f1d2d;background:#2a1215;color:#fda4af;font-weight:800}
   .cat-adult.unlocked{border-color:#3f3f47;background:var(--card2);color:#fda4af}
+
+  /* Audience switch — Mixed / Simple / 18+ filter, reachable without scrolling */
+  .audience-switch{display:flex;gap:3px;margin:12px 16px 0;background:#17171b;border:1px solid var(--border);border-radius:999px;padding:3px;flex-shrink:0}
+  .aud-btn{flex:1;border:none;background:transparent;color:var(--muted);font-size:12.5px;font-weight:800;padding:9px 4px;border-radius:999px;transition:.15s;white-space:nowrap}
+  .aud-btn.sel{background:#f4f4f5;color:#0c0c0e}
+  .aud-btn.adult.sel{background:#e11d48;color:#fff}
+
+  /* Compact 18+ strip (sits right under the categories, not at the page bottom) */
+  .adult-banner.compact{margin:10px 16px 2px;padding:11px 12px;align-items:center;border-radius:15px;gap:11px}
+  .adult-banner.compact .lock-ic{width:36px;height:36px;border-radius:11px}
+  .adult-banner.compact .lock-ic svg{width:19px;height:19px}
+  .adult-banner.compact b{font-size:13.5px;margin-bottom:2px}
+  .adult-banner.compact p{font-size:11.5px;line-height:1.45}
+  .adult-banner.compact .verify-link{margin-top:0;flex-shrink:0;padding:9px 13px;font-size:12.5px}
   .badge18{display:inline-grid;place-items:center;background:#e11d48;color:#fff;font-size:10px;font-weight:900;letter-spacing:.03em;padding:4px 7px;border-radius:7px;line-height:1}
   .adult-banner{margin:0 16px 12px;background:linear-gradient(135deg,#2a1215,#1a1a1e);border:1px solid #7f1d2d;border-radius:18px;padding:16px;display:flex;gap:13px;align-items:flex-start}
   .adult-banner .lock-ic{width:44px;height:44px;border-radius:14px;background:rgba(225,29,72,.16);color:#fb7185;display:grid;place-items:center;flex-shrink:0}
@@ -503,7 +517,22 @@
             <button class="cat cat-adult" data-cat="adult" id="adultChip">18+ Adults Only</button>
           </div>
 
-          <button class="hero" onclick="openChat('aria')" aria-label="Chat with Aria, featured character">
+          <div class="audience-switch" role="group" aria-label="Character type">
+            <button type="button" class="aud-btn sel" data-aud="mixed" onclick="setAudience('mixed')">Mixed</button>
+            <button type="button" class="aud-btn" data-aud="simple" onclick="setAudience('simple')">Simple</button>
+            <button type="button" class="aud-btn adult" data-aud="adult" onclick="setAudience('adult')">18+ Only</button>
+          </div>
+
+          <div class="adult-banner compact" id="adultBanner">
+            <div class="lock-ic" id="adultBannerIcon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 8h-1V6a5 5 0 0 0-10 0v2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2zm-6 9a2 2 0 1 1 0-4 2 2 0 0 1 0 4zm3.1-9H8.9V6a3.1 3.1 0 0 1 6.2 0z"/></svg></div>
+            <div style="flex:1;min-width:0">
+              <b id="adultBannerTitle">After Dark · 18+ — locked</b>
+              <p id="adultBannerText">Adult characters are mixed into the feed below, blurred. Verify your age once to unlock them.</p>
+            </div>
+            <button class="verify-link" onclick="openVerify()">Verify age</button>
+          </div>
+
+          <button class="hero" id="heroCard" onclick="openChat('aria')" aria-label="Chat with Aria, featured character">
             <img data-imgsrc="aria" alt="Aria — friendly American companion and study helper, illustrated portrait" />
             <div class="hero-shade"></div>
             <div class="hero-body">
@@ -517,12 +546,12 @@
             </div>
           </button>
 
-          <div class="section-head"><h3>For You</h3><span id="gridCount"></span></div>
+          <div class="section-head" id="gridHead"><h3 id="gridTitle">For You</h3><span id="gridCount"></span></div>
           <div class="grid" id="charList"></div>
           <div class="empty" id="charEmpty"><b>No characters found</b>No character matches that name — create a new one instead.</div>
 
-          <div class="section-head"><h3>Trending in Fantasy</h3></div>
-          <button class="wide" onclick="openChat('luna')" aria-label="Chat with Luna">
+          <div class="section-head" id="trendingHead"><h3>Trending in Fantasy</h3></div>
+          <button class="wide" id="trendingWide" onclick="openChat('luna')" aria-label="Chat with Luna">
             <img data-imgsrc="luna" alt="Luna — fantasy sorceress with a glowing crystal orb" />
             <div class="hero-shade"></div>
             <div class="hero-body">
@@ -532,16 +561,6 @@
             </div>
           </button>
 
-          <div class="section-head" id="adultSectionHead"><h3>After Dark</h3><span class="badge18">18+</span></div>
-          <div class="adult-banner" id="adultBanner">
-            <div class="lock-ic" id="adultBannerIcon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 8h-1V6a5 5 0 0 0-10 0v2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2zm-6 9a2 2 0 1 1 0-4 2 2 0 0 1 0 4zm3.1-9H8.9V6a3.1 3.1 0 0 1 6.2 0z"/></svg></div>
-            <div style="flex:1;min-width:0">
-              <b id="adultBannerTitle">Adults-only characters — locked</b>
-              <p id="adultBannerText">Romantic 18+ characters live here, separate from the main feed. Verify your age once to unlock this section.</p>
-              <button class="verify-link" onclick="openVerify()">Verify age to unlock</button>
-            </div>
-          </div>
-          <div class="grid" id="adultGrid"></div>
 
           <div class="proto-note">GUI Prototype — for approval</div>
         </div>
@@ -1142,12 +1161,13 @@ function signInWithGoogle(){
   $('authErr').classList.remove('show');
   if(!requireAuth()) return;
   setAuthButtonsBusy(true, 'google');
-  /* Real Google sign-in: the browser leaves for Google and returns to this
-     same page with the session in the URL, where getSession /
-     onAuthStateChange picks it up and enters the app like any other login. */
+  /* Real Google sign-in: the browser leaves for Google and returns to the
+     Site URL configured in Supabase Auth (the hosted login page) with the
+     session in the URL, where getSession / onAuthStateChange picks it up
+     and enters the app like any other login. No redirectTo override: the
+     page never reads its own address. */
   supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: { redirectTo: window.location.href.split('#')[0].split('?')[0] }
+    provider: 'google'
   }).then(function(res){
     if(res && res.error){
       setAuthButtonsBusy(false, 'google');
@@ -1264,35 +1284,97 @@ function logOut(toSignup){
 function backFromChat(){ go(chatReturn); }
 
 /* ---------- Discover grid ---------- */
-function renderCharacters(filter){
-  var q = (filter||'').trim().toLowerCase();
-  var html = ''; var shown = 0;
-  CHARACTERS.forEach(function(c){
-    if(activeCat==='featured' && !c.featured && !c.isNew) return;
-    if(activeCat!=='all' && activeCat!=='featured' && c.cat!==activeCat && !c.isNew) return;
-    if(q && (c.name+' '+c.role+' '+c.tagline+' '+c.traits.join(' ')).toLowerCase().indexOf(q)===-1) return;
-    shown++;
-    html += '<button class="gcard" onclick="openChat(\''+c.id+'\')">'
-      + '<span class="gimg"><img src="'+c.img+'" alt="'+esc(c.name)+' portrait" loading="lazy" /><span class="live"><i></i>Online</span></span>'
-      + '<span class="gbody"><span class="gname">'+esc(c.name)+'</span>'
+/* Audience mode: 'mixed' interleaves simple + adult cards in ONE grid so
+   nobody scrolls past the whole simple roster to reach After Dark;
+   'simple' shows simple only; 'adult' shows After Dark only. As more
+   characters are added the switch, categories and search filter the same
+   single grid instantly — no extra scrolling. */
+var audienceMode = 'mixed';
+function setAudience(mode){
+  audienceMode = mode;
+  if(mode === 'adult'){ activeCat = 'adult'; }
+  else if(activeCat === 'adult'){ activeCat = 'all'; }
+  renderCharacters($('searchInput').value);
+}
+function simpleCardHTML(c){
+  return '<button class="gcard" onclick="openChat(\''+c.id+'\')">'
+    + '<span class="gimg"><img src="'+c.img+'" alt="'+esc(c.name)+' portrait" loading="lazy" /><span class="live"><i></i>Online</span></span>'
+    + '<span class="gbody"><span class="gname">'+esc(c.name)+'</span>'
+    + '<span class="gtag">'+esc(c.tagline)+'</span>'
+    + '<span class="gfoot"><span class="handle">@admin</span><span class="ccount">'+MSG_ICON+fmtChats(c.chats)+'</span></span></span></button>';
+}
+function adultCardHTML(c){
+  if(ageVerified){
+    return '<button class="gcard" onclick="openChat(\''+c.id+'\')">'
+      + '<span class="gimg"><img src="'+c.img+'" alt="'+esc(c.name)+' portrait" loading="lazy" /><span class="badge18 age-badge">18+</span></span>'
+      + '<span class="gbody"><span class="gname">'+esc(c.name)+' · '+c.age+'</span>'
       + '<span class="gtag">'+esc(c.tagline)+'</span>'
       + '<span class="gfoot"><span class="handle">@admin</span><span class="ccount">'+MSG_ICON+fmtChats(c.chats)+'</span></span></span></button>';
-  });
-  $('charList').innerHTML = html;
-  $('charEmpty').style.display = shown ? 'none' : 'block';
-  $('gridCount').textContent = shown + ' characters';
-  $('statChars').textContent = CHARACTERS.length;
+  }
+  return '<button class="gcard locked" onclick="openVerify()" aria-label="Locked 18+ character, verify your age to unlock">'
+    + '<span class="gimg"><img src="'+c.img+'" alt="" loading="lazy" /><span class="badge18 age-badge">18+</span>'
+    + '<span class="lock-overlay">'+LOCK_SVG+'<span>ADULTS ONLY</span></span></span>'
+    + '<span class="gbody"><span class="gname blur-text">Hidden name</span>'
+    + '<span class="gtag blur-text">Hidden until you verify your age to unlock</span>'
+    + '<span class="gfoot"><span class="age-line">Age 25-30 · Locked</span><span class="ccount">'+LOCK_SVG.replace('<svg','<svg style="width:13px;height:13px"')+'</span></span></span></button>';
 }
+function renderCharacters(filter){
+  var q = (filter||'').trim().toLowerCase();
+  var simpleList = CHARACTERS.filter(function(c){
+    if(activeCat==='featured' && !c.featured && !c.isNew) return false;
+    if(activeCat!=='all' && activeCat!=='featured' && c.cat!==activeCat && !c.isNew) return false;
+    if(q && (c.name+' '+c.role+' '+c.tagline+' '+c.traits.join(' ')).toLowerCase().indexOf(q)===-1) return false;
+    return true;
+  });
+  var adultList = [];
+  if(audienceMode!=='simple' && (activeCat==='all' || activeCat==='adult')){
+    adultList = ADULT_CHARACTERS.filter(function(c){
+      if(q && (c.name+' '+c.role+' '+c.tagline+' '+c.traits.join(' ')+' '+c.age).toLowerCase().indexOf(q)===-1) return false;
+      return true;
+    });
+  }
+  var cards = [];
+  if(audienceMode==='adult'){
+    cards = adultList.map(adultCardHTML);
+  } else if(audienceMode==='simple' || activeCat!=='all'){
+    cards = simpleList.map(simpleCardHTML);
+  } else {
+    /* Mixed: one adult card after every two simple cards, so the first
+       After Dark card lands in the second row of the grid however long
+       the simple roster grows. */
+    var ai = 0;
+    simpleList.forEach(function(c, i){
+      cards.push(simpleCardHTML(c));
+      if((i % 2) === 1 && ai < adultList.length){ cards.push(adultCardHTML(adultList[ai])); ai++; }
+    });
+    while(ai < adultList.length){ cards.push(adultCardHTML(adultList[ai])); ai++; }
+  }
+  $('charList').innerHTML = cards.join('');
+  $('charEmpty').style.display = cards.length ? 'none' : 'block';
+  $('gridCount').textContent = cards.length + ' characters';
+  $('statChars').textContent = CHARACTERS.length;
+  var gt = $('gridTitle');
+  if(gt) gt.textContent = audienceMode==='adult' ? 'After Dark' : (audienceMode==='simple' ? 'Simple Characters' : 'For You');
+  var defaultView = !q && activeCat==='all' && audienceMode!=='adult';
+  var heroEl = $('heroCard'); if(heroEl) heroEl.style.display = defaultView ? '' : 'none';
+  var thEl = $('trendingHead'); if(thEl) thEl.style.display = defaultView ? '' : 'none';
+  var twEl = $('trendingWide'); if(twEl) twEl.style.display = defaultView ? '' : 'none';
+  document.querySelectorAll('#catRow .cat').forEach(function(x){ x.classList.toggle('sel', x.getAttribute('data-cat')===activeCat); });
+  document.querySelectorAll('.aud-btn').forEach(function(x){ x.classList.toggle('sel', x.getAttribute('data-aud')===audienceMode); });
+  updateAdultUI();
+}
+
+
 var catBtns = document.querySelectorAll('#catRow .cat');
 catBtns.forEach(function(b){
   b.addEventListener('click', function(){
-    if(b.getAttribute('data-cat')==='adult'){ openAdultGate(); return; }
-    catBtns.forEach(function(x){ x.classList.remove('sel'); });
-    b.classList.add('sel');
-    activeCat = b.getAttribute('data-cat');
+    var cat = b.getAttribute('data-cat');
+    if(cat==='adult'){ audienceMode = 'adult'; activeCat = 'adult'; }
+    else { activeCat = cat; if(audienceMode==='adult') audienceMode = 'mixed'; }
     renderCharacters($('searchInput').value);
   });
 });
+
 $('searchInput').addEventListener('input', function(e){
   $('searchClear').style.display = e.target.value ? 'block' : 'none';
   renderCharacters(e.target.value);
@@ -1567,6 +1649,7 @@ $('createForm').addEventListener('submit', function(e){
   CHARACTERS.unshift(nc);
   CONVERSATIONS[id] = [{from:'in', text:greeting}];
   activeCat = 'all';
+  audienceMode = 'mixed';
   catBtns.forEach(function(x){ x.classList.toggle('sel', x.getAttribute('data-cat')==='all'); });
   renderCharacters($('searchInput').value);
   e.target.reset();
@@ -1582,52 +1665,33 @@ var ageVerified = false;
 var LOCK_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 8h-1V6a5 5 0 0 0-10 0v2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2zm-6 9a2 2 0 1 1 0-4 2 2 0 0 1 0 4zm3.1-9H8.9V6a3.1 3.1 0 0 1 6.2 0z"/></svg>';
 var CHECK_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1.2 14.5-4-4 1.4-1.4 2.6 2.6 5.6-5.6 1.4 1.4z"/></svg>';
 
-function renderAdult(){
-  var html = '';
-  ADULT_CHARACTERS.forEach(function(c){
-    if(ageVerified){
-      html += '<button class="gcard" onclick="openChat(\''+c.id+'\')">'
-        + '<span class="gimg"><img src="'+c.img+'" alt="'+esc(c.name)+' portrait" loading="lazy" /><span class="badge18 age-badge">18+</span></span>'
-        + '<span class="gbody"><span class="gname">'+esc(c.name)+' · '+c.age+'</span>'
-        + '<span class="gtag">'+esc(c.tagline)+'</span>'
-        + '<span class="gfoot"><span class="handle">@admin</span><span class="ccount">'+MSG_ICON+fmtChats(c.chats)+'</span></span></span></button>';
-    } else {
-      html += '<button class="gcard locked" onclick="openVerify()" aria-label="Locked 18+ character, verify your age to unlock">'
-        + '<span class="gimg"><img src="'+c.img+'" alt="" loading="lazy" /><span class="badge18 age-badge">18+</span>'
-        + '<span class="lock-overlay">'+LOCK_SVG+'<span>ADULTS ONLY</span></span></span>'
-        + '<span class="gbody"><span class="gname blur-text">Hidden name</span>'
-        + '<span class="gtag blur-text">Hidden until you verify your age to unlock</span>'
-        + '<span class="gfoot"><span class="age-line">Age 25–30 · Locked</span><span class="ccount">'+LOCK_SVG.replace('<svg','<svg style="width:13px;height:13px"')+'</span></span></span></button>';
-    }
-  });
-  $('adultGrid').innerHTML = html;
+function updateAdultUI(){
   var banner = $('adultBanner');
+  if(!banner) return;
+  var chip = $('adultChip');
   if(ageVerified){
-    banner.classList.add('verified');
-    $('adultBannerIcon').innerHTML = CHECK_SVG;
-    $('adultBannerTitle').textContent = 'Age verified — 18+ section unlocked';
-    $('adultBannerText').textContent = 'You verified that you are 18 or older. All characters here are fictional adults, aged 25–30.';
-    $('adultChip').classList.add('unlocked');
-    $('adultChip').textContent = '18+ Unlocked';
+    banner.style.display = 'none';
+    if(chip){ chip.classList.add('unlocked'); chip.textContent = '18+ Unlocked'; }
   } else {
+    banner.style.display = (audienceMode==='simple') ? 'none' : 'flex';
     banner.classList.remove('verified');
     $('adultBannerIcon').innerHTML = LOCK_SVG;
-    $('adultBannerTitle').textContent = 'Adults-only characters — locked';
+    $('adultBannerTitle').textContent = 'After Dark · 18+ — locked';
     $('adultBannerText').textContent = isGuest
-      ? 'You are in Guest Mode. Create a free account and verify your age (18+) to unlock this section.'
-      : 'Romantic 18+ characters live here, separate from the main feed. Verify your age once to unlock this section.';
-    $('adultChip').classList.remove('unlocked');
-    $('adultChip').textContent = '18+ Adults Only';
+      ? 'Adult characters are mixed into the feed below. Guests can\'t unlock them — sign up free, then verify your age.'
+      : 'Adult characters are mixed into the feed below, blurred. Verify your age once to unlock them.';
+    if(chip){ chip.classList.remove('unlocked'); chip.textContent = '18+ Adults Only'; }
   }
+}
+function renderAdult(){
+  renderCharacters($('searchInput') ? $('searchInput').value : '');
 }
 function openAdultGate(){
-  if(ageVerified){
-    var el = $('adultSectionHead');
-    if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
-  } else {
-    openVerify();
-  }
+  if(ageVerified){ setAudience('adult'); }
+  else { openVerify(); }
 }
+
+
 function openVerify(){
   if(isGuest){ showToast('Guest Mode: sign up + verify age to unlock 18+'); var b = $('adultBanner'); if(b) b.scrollIntoView({behavior:'smooth', block:'center'}); return; }
   if(ageVerified){ openAdultGate(); return; }
@@ -1679,7 +1743,7 @@ function completeVerification(){
     btn.textContent = 'Unlock 18+ Section';
     go('characters');
     showToast('Age verified — 18+ section unlocked');
-    setTimeout(function(){ var el = $('adultSectionHead'); if(el) el.scrollIntoView({behavior:'smooth', block:'start'}); }, 250);
+    setTimeout(function(){ var el = $('gridHead'); if(el) el.scrollIntoView({behavior:'smooth', block:'start'}); }, 250);
   }, 900);
 }
 
