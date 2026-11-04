@@ -403,6 +403,14 @@
   .guest-banner .gb-pill{background:#f4f4f5;color:#0c0c0e;font-size:10px;font-weight:900;letter-spacing:.05em;padding:5px 8px;border-radius:999px;flex-shrink:0;text-transform:uppercase}
   .guest-banner p{margin:0;font-size:12px;color:var(--muted2);line-height:1.45;flex:1}
   .guest-banner button{border:none;background:transparent;color:#fff;font-size:12.5px;font-weight:800;white-space:nowrap;padding:4px 0;text-decoration:underline;text-underline-offset:3px}
+  /* Guest message-limit strip (chat screen, above the composer) */
+  .guest-strip{display:none;margin:0 12px 8px;padding:9px 12px;background:#1e1e24;border:1px solid #3f3f47;border-radius:13px;font-size:12px;color:var(--muted2);line-height:1.45;align-items:center;gap:9px;flex-shrink:0}
+  .guest-strip.show{display:flex}
+  .guest-strip b{color:#fff}
+  .guest-strip.limit{background:rgba(248,113,113,.1);border-color:rgba(248,113,113,.45);color:#fca5a5}
+  .guest-strip.limit b{color:#fecaca}
+  .guest-strip button{margin-left:auto;flex-shrink:0;border:none;background:#f4f4f5;color:#0c0c0e;font-size:12px;font-weight:800;padding:8px 13px;border-radius:999px;white-space:nowrap}
+  .composer-box textarea:disabled{color:#71717a}
   .logout-item{color:#fca5a5}
   .logout-item .li-icon{background:rgba(248,113,113,.1);color:#f87171}
 </style>
@@ -478,7 +486,7 @@
               <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5zm0 2c-3.34 0-10 1.67-10 5v3h20v-3c0-3.33-6.66-5-10-5z"/></svg>
               Continue as Guest
             </button>
-            <div class="guest-note">No account needed — just look around. Chats won't be saved.</div>
+            <div class="guest-note">No account needed. Guests can send up to 100 messages per 24 hours — 18+ stays locked, and chats won't be saved.</div>
 
             <div class="sample-note">Real sign-in, powered by Supabase.<br>Email and guest sign-in are live.</div>
           </div>
@@ -503,7 +511,7 @@
         <div class="scroll">
           <div class="guest-banner" id="guestBanner">
             <span class="gb-pill">Guest Mode</span>
-            <p>You're browsing as a guest. 18+ stays locked — sign up to verify your age.</p>
+            <p id="guestBannerText">You're browsing as a guest — 100 of 100 messages left. 18+ stays locked — sign up to verify your age.</p>
             <button type="button" onclick="logOut(true)">Sign Up</button>
           </div>
           <div class="cats" id="catRow" aria-label="Categories">
@@ -628,6 +636,10 @@
           <button class="icon-btn" aria-label="More options" onclick="showToast('Chat options — preview only in this prototype')"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></button>
         </div>
         <div class="messages" id="messages"></div>
+        <div class="guest-strip" id="guestStrip" role="status">
+          <span id="guestStripText"></span>
+          <button type="button" id="guestStripBtn" style="display:none" onclick="logOut(true)">Sign Up free</button>
+        </div>
         <div class="composer">
           <div class="composer-box">
             <button class="cbtn" aria-label="Add" onclick="showToast('Attach — off in this prototype')"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></button>
@@ -1073,6 +1085,71 @@ try {
 var authMode = 'login';
 var isGuest = false;
 var signedInName = 'Admin';
+/* Guest rules (confirmed): a guest may send at most 100 messages across
+   ALL chats per 24-hour window, and guests can never enter the 18+ section
+   (the adult gate below already refuses them — verification needs a real
+   account). Logged-in accounts have no message limit. The window starts at
+   the guest's FIRST message; the count + window start are kept in
+   localStorage, so reloading the page or re-entering as guest does NOT
+   reset them — only the 24 hours passing (or signing up / logging in,
+   which removes the limit) does. */
+var GUEST_MSG_LIMIT = 100;
+var GUEST_WINDOW_MS = 24 * 60 * 60 * 1000;
+var guestMsgCount = 0;
+var guestWindowStart = 0; /* epoch ms of the first message in the current window; 0 = no window yet */
+function saveGuestQuota(){
+  try { localStorage.setItem('caiGuestQuota', JSON.stringify({count: guestMsgCount, start: guestWindowStart})); } catch(e){}
+}
+function loadGuestQuota(){
+  try {
+    var raw = localStorage.getItem('caiGuestQuota');
+    if(raw){ var q = JSON.parse(raw); if(q){ guestMsgCount = parseInt(q.count, 10) || 0; guestWindowStart = Number(q.start) || 0; } }
+  } catch(e){}
+  refreshGuestQuota();
+}
+function refreshGuestQuota(){
+  if(guestWindowStart && (Date.now() - guestWindowStart) >= GUEST_WINDOW_MS){
+    guestMsgCount = 0; guestWindowStart = 0; saveGuestQuota();
+  }
+}
+function guestMsgsLeft(){ refreshGuestQuota(); return Math.max(0, GUEST_MSG_LIMIT - guestMsgCount); }
+function guestResetText(){
+  if(!guestWindowStart) return '';
+  var ms = GUEST_WINDOW_MS - (Date.now() - guestWindowStart);
+  if(ms <= 0) return '';
+  var mins = Math.ceil(ms / 60000);
+  if(mins >= 60){
+    var h = Math.floor(mins / 60), m = mins % 60;
+    return 'Limit resets in ' + h + (h === 1 ? ' hour' : ' hours') + (m ? ' ' + m + ' min' : '') + '.';
+  }
+  return 'Limit resets in ' + mins + (mins === 1 ? ' minute' : ' minutes') + '.';
+}
+loadGuestQuota();
+function updateGuestLimitUI(){
+  var left = guestMsgsLeft();
+  var atLimit = isGuest && left <= 0;
+  var strip = $('guestStrip');
+  if(strip){
+    strip.classList.toggle('show', isGuest);
+    strip.classList.toggle('limit', atLimit);
+    $('guestStripText').innerHTML = atLimit
+      ? '<b>Guest limit reached — 100 of 100 messages used.</b> Create a free account or log in to keep chatting. ' + guestResetText() + ' 18+ stays locked for guests.'
+      : 'Guest messages: <b>' + guestMsgCount + ' / ' + GUEST_MSG_LIMIT + '</b> used · ' + left + ' left' + (guestMsgCount > 0 ? ' · ' + guestResetText() : '') + ' · 18+ locked for guests';
+    $('guestStripBtn').style.display = (atLimit || left <= 10) ? 'block' : 'none';
+  }
+  var bt = $('guestBannerText');
+  if(bt && isGuest){
+    bt.textContent = atLimit
+      ? 'Guest limit reached (100 messages used). ' + guestResetText() + ' 18+ stays locked for guests — create a free account to continue now.'
+      : 'You\'re browsing as a guest — ' + left + ' of 100 messages left (per 24 hours). 18+ stays locked — sign up to verify your age.';
+  }
+  var inp = $('composerInput');
+  if(inp){
+    inp.disabled = atLimit;
+    if(atLimit) inp.placeholder = 'Guest limit reached — sign up to continue…';
+  }
+  if(atLimit){ var sb2 = $('sendBtn'); if(sb2) sb2.classList.remove('show'); }
+}
 function setAuthMode(mode){
   authMode = mode;
   var signup = mode==='signup';
@@ -1233,12 +1310,14 @@ function enterAppSession(user, kind){
   if(isGuest){
     signedInName = 'Guest';
     ageVerified = false;
+    loadGuestQuota(); /* the 24h quota survives re-entry — it only resets when the window passes */
   } else {
     var meta = user.user_metadata || {};
     signedInName = meta.full_name || meta.name || pendingSignupName || (user.email ? user.email.split('@')[0].replace(/^\w/, function(ch){ return ch.toUpperCase(); }) : 'Admin');
     pendingSignupName = '';
   }
   renderAdult();
+  updateGuestLimitUI();
   /* Update profile + guest banner from the real user */
   $('guestBanner').classList.toggle('show', isGuest);
   $('profAvatar').textContent = isGuest ? 'G' : (signedInName.charAt(0).toUpperCase() || 'A');
@@ -1269,7 +1348,8 @@ function logOut(toSignup){
   if(supabase){ try { var so = supabase.auth.signOut(); if(so && so.catch) so.catch(function(){}); } catch(e){} }
   inApp = false;
   isGuest = false;
-  /* Logging out resets the session: age verification and started chats are cleared */
+  /* Logging out resets the session (age verification, started chats) — but
+     NOT the guest 24h quota: it stays in localStorage until its window passes. */
   ageVerified = false;
   chatOrder = [];
   $('dobDay').value = ''; $('dobMonth').value = ''; $('dobYear').value = '';
@@ -1277,6 +1357,7 @@ function logOut(toSignup){
   checkVerifyForm();
   var ub = $('unlockBtn'); ub.disabled = true; ub.textContent = 'Unlock 18+ Section';
   renderAdult();
+  updateGuestLimitUI();
   setAuthMode(toSignup ? 'signup' : 'login');
   go('login');
   showToast(toSignup ? 'Create a free account to continue' : 'Logged out — see you soon');
@@ -1527,6 +1608,7 @@ function openChat(id){
   $('screen-chat').classList.add('active');
   $('bottomNav').classList.add('hidden');
   renderMessages(id);
+  updateGuestLimitUI();
 }
 
 var ta = $('composerInput');
@@ -1566,6 +1648,11 @@ function finishReply(charId, reply, usedFallback){
 function sendMessage(){
   var text = ta.value.trim();
   if(!text) return;
+  if(isGuest && guestMsgsLeft() <= 0){
+    updateGuestLimitUI();
+    showToast('Guest limit reached (100 messages) — sign up or log in to continue. ' + guestResetText());
+    return;
+  }
   if(chatBusy){ showToast('Please wait for the current reply…'); return; }
   var charId = currentChar;
   var c = getChar(charId);
@@ -1576,6 +1663,15 @@ function sendMessage(){
   if(!CONVERSATIONS[charId]) CONVERSATIONS[charId] = [];
   CONVERSATIONS[charId].push({from:'out', text:text});
   c.lastPreview = text; c.time = 'Now';
+  if(isGuest){
+    if(!guestWindowStart) guestWindowStart = Date.now(); /* first message opens the 24h window */
+    guestMsgCount++;
+    saveGuestQuota();
+    var leftNow = guestMsgsLeft();
+    updateGuestLimitUI();
+    if(leftNow === 0) showToast('That was your last guest message — sign up free for unlimited chats, or wait: ' + guestResetText());
+    else if(leftNow === 10 || leftNow === 5 || leftNow === 1) showToast('Guest messages: only ' + leftNow + ' left — sign up for unlimited chats');
+  }
   chatBusy = true; chatBusyChar = charId;
   setTyping(true, charId);
   requestLiveReply(messages, c.cat === 'adult').then(function(liveReply){
