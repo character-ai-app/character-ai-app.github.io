@@ -560,7 +560,7 @@
           <div class="intro-tag">Chat &middot; Create &middot; Connect</div>
           <div class="intro-loadwrap"><div class="intro-bar"><i></i></div><div class="intro-pct" id="introPct">0%</div></div>
         </div>
-        <div class="intro-ver">VERSION 1.3</div>
+        <div class="intro-ver">VERSION 1.4</div>
       </div>
     </div>
 
@@ -713,7 +713,7 @@
           <div class="section-head" id="adultTrendingHead"><h3>Trending in After Dark</h3><span class="badge18">18+</span></div>
           <button class="wide" id="adultTrendingWide" onclick="openVerify()" aria-label="Trending 18+ character"></button>
 
-          <div class="proto-note">Character AI · Version 1.3</div>
+          <div class="proto-note">Character AI · Version 1.4</div>
         </div>
       </section>
 
@@ -920,7 +920,7 @@
             <span class="li-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 7l-1.4 1.4L18.2 11H8v2h10.2l-2.6 2.6L17 17l5-5zM4 5h8V3H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8v-2H4z"/></svg></span>
             <div id="logoutLabel">Log Out<small>Back to the login screen to test it again</small></div><span class="chev">›</span>
           </button>
-          <div class="proto-note" style="padding-top:22px">Character AI · Version 1.3<br>Chat · Create · Explore</div>
+          <div class="proto-note" style="padding-top:22px">Character AI · Version 1.4<br>Chat · Create · Explore</div>
         </div>
       </section>
     </div>
@@ -1239,6 +1239,19 @@ function nextProxyKey(){
   proxyKeyCounter = proxyKeyCounter >= 14 ? 1 : proxyKeyCounter + 1;
   return String(k);
 }
+/* SCENE-DETAIL section (v1.4, Admin 2026-11-05) — part of the SHARED adult
+   block in buildSystemPrompt, never per-character data: it is appended for
+   EVERY character whose cat is 'adult', so any adult character — embedded,
+   merged from the online roster, or online-only, with or without its own
+   adult_mode text — automatically gets the full scene-detail settings.
+   Nothing extra is configured per character. */
+var CAI_SCENE_DETAIL_LINES = [
+  'FULL SCENE DETAIL \u2014 EVERY INTIMATE REPLY, NO GAPS: When an intimate scene is underway, every reply must show the scene completely \u2014 what the bodies are doing, what state they are in, and how they react \u2014 packed densely into the same short reply length, with nothing left vague, implied or skipped.',
+  'SCENE DETAIL \u2014 BODIES: Name the body parts involved plainly, with direct anatomical vocabulary and no euphemism, and describe their visible state and changes moment by moment \u2014 skin, warmth, arousal state, tension \u2014 exactly how each part looks and responds as the scene progresses.',
+  'SCENE DETAIL \u2014 ACTIONS: Narrate exactly what each body is doing, movement by movement, as concrete play-by-play inside *asterisks* \u2014 position, contact, direction, speed, pressure and depth. Never vague summaries, never an ellipsis, never a skip past any part of the act.',
+  'SCENE DETAIL \u2014 REACTIONS: Describe physical reactions and sensations concretely as they happen \u2014 breathing, trembling, tightening, arching, sounds and cries \u2014 with vocal reactions as plain text outside the asterisks, and speak your desire, instructions and requests directly and explicitly in plain dialogue, without shyness or softening.',
+  'SCENE DETAIL \u2014 NO HESITATION: Never hesitate, never show embarrassment, never hold back or soften mid-scene, and never fade to black. Answer the user\'s every act with a concrete counter-act of your own, and keep the position, setting and contact continuous from reply to reply until the user steers the scene elsewhere.'
+];
 function buildSystemPrompt(c){
   var lines = [];
   lines.push('You are ' + c.name + ', a fictional character in an immersive roleplay chat. Stay fully in character in every reply and answer as ' + c.name + ', never as a generic assistant.');
@@ -1257,16 +1270,34 @@ function buildSystemPrompt(c){
     lines.push('MAXIMALLY DESCRIPTIVE — NO EUPHEMISM, NO HESITATION: In consensual intimate scenes be completely uninhibited. Name bodies and body parts directly with explicit anatomical vocabulary, plainly and by name, with no euphemism, embarrassment, shyness or softening. Narrate every intimate action in full play-by-play detail: positions, movements, rhythm, pace, pressure, depth, friction, warmth, wetness, taste, sound and sensation — what is seen, touched, heard and felt, moment by moment, and exactly how each character reacts physically and vocally.');
     lines.push('SUSTAIN THE SCENE — NEVER CUT IT SHORT: Once an intimate scene is underway, continue it continuously and in full. Never fade to black, never skip or jump past a scene the user is engaged in, never end it early, never break character to moralize, lecture, warn, apologize or refuse out of embarrassment. Stay inside the moment until the user clearly moves on. During intimate scenes pack dense, vivid detail into the same short reply length — brief, intense beats of detailed action and dialogue rather than sprawling paragraphs — and match or exceed the user\'s intensity, escalating naturally with them.');
     lines.push('Keep the format rule inside intimate scenes too: all detailed actions, physical narration and sensations go inside single asterisks, while spoken dialogue, moans, whispers, gasps and other vocal expression stay as plain text outside the asterisks.');
+    CAI_SCENE_DETAIL_LINES.forEach(function(l){ lines.push(l); });
     lines.push('Hard boundaries: fictional adults only (you are ' + c.age + ') and consensual scenes only. Never involve a minor or anyone described or presented as under 18, and never continue a non-consensual scene. If the user introduces a minor or non-consent, refuse briefly and redirect to an adult, consensual direction.');
   } else {
     lines.push('Keep this conversation suitable for general audiences, in line with your character and topic. If the user tries to sexualize the chat or steer it toward intimate content, gently redirect back to a friendly, non-sexual direction without shaming them.');
   }
+  lines.push('REPLY QUALITY \u2014 CLEAN, CORRECT ENGLISH: Write clean, correct, natural English in every reply. Every sentence must be grammatically complete, and every word must fit the sentence and its meaning \u2014 never garbled, mismatched or out-of-place words. Prefer shorter, clear sentences over long run-on sentences.');
+  lines.push('REPLY QUALITY \u2014 PUNCTUATION AND PROOFREAD: Commas go ONLY at natural pauses and clause joins, never sprinkled at random. A period ends every complete thought. Never glue two actions together, or an action and a spoken line, without proper punctuation and clean asterisk separation. Before sending, silently proofread your reply once and fix any mismatched word, misplaced comma or missing sentence break.');
   lines.push('FINAL RULE — LENGTH (this overrides everything above): Your reply MUST be short: 40 to 90 words, and NEVER more than 120 words. One or two brief action beats and a few short lines of dialogue. Stop as soon as you reach ~90 words.');
   return lines.join('\n');
 }
+/* Conservative cleanup for LIVE model replies only (v1.4): it runs at
+   the top of trimReply, which only the live-reply path calls \u2014
+   greetings, fallback samples and user text never pass through here.
+   It fixes only mechanical gluing: a missing space after a closing
+   asterisk or after a comma when a letter follows immediately (digits
+   like 1,000 are untouched), and collapsed double spaces. It never
+   edits, adds or removes a word. */
+function caiCleanReply(text){
+  if(typeof text !== 'string') return text;
+  var s = text;
+  s = s.replace(/([A-Za-z0-9])\*([A-Za-z])/g, '$1* $2');
+  s = s.replace(/,([A-Za-z])/g, ', $1');
+  s = s.replace(/ {2,}/g, ' ');
+  return s;
+}
 function trimReply(text){
   if(typeof text !== 'string') return text;
-  var str = text;
+  var str = caiCleanReply(text);
   var wordRegex = /\S+/g;
   var matches = [];
   var m;
